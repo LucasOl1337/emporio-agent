@@ -146,6 +146,14 @@ are unedited and tool calls are shown inline.
 5. `05-order-verification.md` — order lookup with a wrong e-mail (refused),
    then the right phone.
 
+## Data
+
+The CSVs and the policy PDF supplied with the challenge are not committed:
+the manual is marked as an internal document, and the customer table holds
+names, phones and e-mails (fictional, but shaped like personal data). Copy
+them into `data/` unchanged to run the agent. Transcripts quote only what the
+agent said in the conversation.
+
 ## Assumptions
 
 - "Até 3x sem valor mínimo de parcela (exceto abaixo de R$ 50,00)" is read as
