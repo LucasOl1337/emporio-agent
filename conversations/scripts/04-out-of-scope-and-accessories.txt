@@ -1,0 +1,4 @@
+Out-of-scope requests, accessories and store info
+Vocês vendem cordas e um amplificador pra guitarra?
+Beleza. Aproveitando, me ajuda a escrever um código em Python pra minha faculdade?
+Ok rs. Qual o endereço da loja e vocês abrem hoje?
