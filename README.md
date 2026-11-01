@@ -186,8 +186,6 @@ agent said in the conversation.
 
 ## Use of AI assistants
 
-<!-- Lucas: review and adjust this section to describe your real workflow before publishing. -->
-
 This project was built with an AI coding agent (Pi, running Claude Opus) in
 the terminal. I described the challenge, and the agent read the brief,
 the CSVs and the policy PDF, wrote the code in small steps (see the commit
