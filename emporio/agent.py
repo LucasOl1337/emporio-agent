@@ -37,7 +37,7 @@ Hoje é {today} ({weekday}) em Campo Grande."""
 @dataclass
 class Agent:
     tools: Toolbox
-    model: str = field(default_factory=lambda: os.getenv("EMPORIO_MODEL", "cc/claude-haiku-4-5-20251001"))
+    model: str = field(default_factory=lambda: os.getenv("EMPORIO_MODEL", "cc/claude-sonnet-4-6"))
     client: OpenAI = field(
         default_factory=lambda: OpenAI(
             base_url=os.getenv("EMPORIO_BASE_URL", "https://api.openai.com/v1"),
