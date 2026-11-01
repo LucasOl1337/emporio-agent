@@ -41,6 +41,7 @@ class Product:
     specs: dict
     created_at: str
     promotion: dict | None = None  # active promotion, if any
+    past_promotions: list[dict] = field(default_factory=list)  # inactive ones
 
     @property
     def effective_price(self) -> float:
@@ -75,6 +76,7 @@ class Product:
         else:
             out["pix_price_brl"] = round(self.price * 0.95, 2)
         if detailed:
+            out["past_promotions_no_longer_valid"] = self.past_promotions
             out["description"] = self.description
             out["specs"] = self.specs
         return out
@@ -93,10 +95,13 @@ class Store:
     def load(cls, data_dir: Path) -> "Store":
         categories = {int(r["category_id"]): r for r in _read(data_dir, "categories")}
         active_promos: dict[int, dict] = {}
+        past_promos: dict[int, list[dict]] = {}
         for r in _read(data_dir, "promotions"):
-            if r["is_active"].strip() == "1":
-                pid = int(r["product_id"])
-                promo = {"description": r["description"], "discount_percent": float(r["discount_percent"])}
+            pid = int(r["product_id"])
+            promo = {"description": r["description"], "discount_percent": float(r["discount_percent"])}
+            if r["is_active"].strip() != "1":
+                past_promos.setdefault(pid, []).append(promo)
+            else:
                 # If two active promotions ever hit one product, keep the larger:
                 # promotions are not cumulative (policy 6.2).
                 if pid not in active_promos or promo["discount_percent"] > active_promos[pid]["discount_percent"]:
@@ -122,6 +127,7 @@ class Store:
                 specs=specs,
                 created_at=r["created_at"],
                 promotion=active_promos.get(pid),
+                past_promotions=past_promos.get(pid, []),
             )
 
         customers = {int(r["customer_id"]): r for r in _read(data_dir, "customers")}

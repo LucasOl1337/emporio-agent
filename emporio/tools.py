@@ -153,6 +153,43 @@ class Toolbox:
         out["days_since_order"] = (today - datetime.fromisoformat(order["order_date"]).date()).days
         return out
 
+    def check_return_options(self, order_id: int, customer_email_or_phone: str) -> dict:
+        """Apply the date windows of policies 4.1, 4.2, 4.3 and 8.1 to a verified order.
+
+        Date arithmetic is done here, not by the model: the first recorded
+        run showed the model miscounting a 30-day window.
+        """
+        order = self.get_order_status(order_id, customer_email_or_phone)
+        if "error" in order:
+            return order
+        if order["status"] not in ("delivered", "shipped"):
+            return {
+                "order_id": order_id,
+                "status": order["status"],
+                "message": "Order not delivered yet; return windows have not started. Cancellation requests go to the team.",
+            }
+        today = self.now().date()
+        bought = datetime.fromisoformat(order["order_date"]).date()
+        received = datetime.fromisoformat(order["estimated_delivery"]).date() if order["estimated_delivery"] else None
+        since_buy = (today - bought).days
+        since_recv = (today - received).days if received else None
+        def window(days: int, elapsed: int | None, basis: str) -> dict:
+            if elapsed is None:
+                return {"eligible": None, "reason": f"no {basis} date in the data"}
+            return {"eligible": 0 <= elapsed <= days, "days_elapsed": elapsed, "limit_days": days, "counted_from": basis}
+        return {
+            "order_id": order_id,
+            "today": today.isoformat(),
+            "order_date": bought.isoformat(),
+            "received_date_assumed": received.isoformat() if received else None,
+            "regret_return_7d_policy_4_1": window(7, since_recv, "receipt (estimated_delivery used as proxy)"),
+            "preference_exchange_7d_policy_4_3": window(7, since_recv, "receipt (estimated_delivery used as proxy)"),
+            "defect_exchange_at_store_30d_policy_4_2": window(30, since_buy, "purchase date"),
+            "legal_warranty_90d_policy_8_1": window(90, since_recv, "receipt (estimated_delivery used as proxy)"),
+            "after_30_days_defect": "Policy 4.2: after 30 days the customer uses the manufacturer warranty; the store can intermediate on request.",
+            "not_covered": "Misuse, drops, humidity, unauthorized modifications (4.2, 8.3). A defect must be assessed by the team before any promise.",
+        }
+
     # ---- policies ------------------------------------------------------
     def get_policy(self, topic: str) -> dict:
         found = self.policies.get(topic)
@@ -181,6 +218,7 @@ class Toolbox:
                 options.append({"installments": n, "value_brl": math.floor(value * 100) / 100})
         return {
             "amount_brl": amount_brl,
+            "max_installments_without_interest": options[-1]["installments"],
             "options": options,
             "pix_price_brl": round(amount_brl * 0.95, 2),
             "rules": "No interest up to 12x. Min installment: R$50 up to 3x, R$80 for 4-6x, R$100 for 7-12x. "
@@ -217,6 +255,15 @@ SCHEMAS = [
     {
         "name": "get_order_status",
         "description": "Status, items, tracking and dates of an order. Requires the order number AND the customer's email or phone for verification.",
+        "parameters": {
+            "type": "object",
+            "properties": {"order_id": {"type": "integer"}, "customer_email_or_phone": {"type": "string"}},
+            "required": ["order_id", "customer_email_or_phone"],
+        },
+    },
+    {
+        "name": "check_return_options",
+        "description": "For a verified order, compute which return, exchange and warranty windows still apply today. Use whenever a customer wants to return, exchange or report a defect on a specific order.",
         "parameters": {
             "type": "object",
             "properties": {"order_id": {"type": "integer"}, "customer_email_or_phone": {"type": "string"}},
